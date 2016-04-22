@@ -26,7 +26,7 @@
     bool clockHigh = 0; //Prevent clock thinking a full cycle has passed.
     unsigned long noteTime = 0;
     unsigned long noteLength = 5*100;
-    unsigned long deadLength = 2*100*1000;
+    unsigned long deadLength = 2*100*100;
     unsigned long prevNoteTime = 0;
     double doubZero = 0;
 
@@ -85,17 +85,23 @@
            //     noteTime = micros();
         
         if (noteRatio != doubZero){
-        //Serial.println(int(noteRatio*100*3.5));
-        usbMIDI.sendNoteOn(int(noteRatio*100*3.5), 99, channel);
-        dead = 0;
-        delay(3000);
-        //delay(1000);
+            //Serial.println(int(noteRatio*100*3.5));
+            usbMIDI.sendNoteOn(int(noteRatio*100*3.5), 99, channel);
+            dead = 0;
+            delay(100);
+            //delay(1000);
         }else{
           if((noteTime-prevNoteTime> deadLength)&&!dead){
             dead = 1;
             usbMIDI.sendNoteOn(61,0,channel);
           }
         }
+
+    
+        prevNoteTime = noteTime;
+        noteTime = micros();
+
+            
            // }
        // }
         
