@@ -4,17 +4,18 @@
   
     const int handPin = 14;  // Analog input is AIN0 (Teensy3 pin 14, next to LED)
     const int LED1 = 13;         // output LED connected on Arduino digital pin 13
-    const int clockPin = 0;
-    const int flagPin = 1; //digital output pin for Oscilloscope to see. 
-    const int b1 = 2;
-    const int b2 = 3;
-    const int b3 = 4;
-    const int b4 = 5;
+    const int clockPin = 2;
+    const int flagPin = 3; //digital output pin for Oscilloscope to see. 
+    const int b1 = 4;
+    const int b2 = 5;
+    const int b3 = 6;
+    const int b4 = 7;
     const int channel = 1;
                 //40000
-    int lightThreshold = 20000; //Threshhold for triggering the second pulse.
+    int lightThreshold = 40000; //Threshhold for triggering the second pulse.
     int lowNotes = 0;
     int highNotes = 0;
+    int dead = 0;
     int lasersOn = 0;
     double buttonNote = 0;
     double noteRatio = 0;
@@ -25,8 +26,9 @@
     bool clockHigh = 0; //Prevent clock thinking a full cycle has passed.
     unsigned long noteTime = 0;
     unsigned long noteLength = 5*100;
+    unsigned long deadLength = 2*100*1000;
     unsigned long prevNoteTime = 0;
-
+    double doubZero = 0;
 
 
     
@@ -45,9 +47,9 @@
       digitalWrite(LED1,HIGH);   delay(1000);   // LED on for 1 second
       digitalWrite(LED1,LOW);    delay(3000);   // wait for slow human to get serial capture running
 
-      usbMIDI.sendNoteOn(61, 99, channel);
+     // usbMIDI.sendNoteOn(61, 99, channel);
       delay(2000);
-      usbMIDI.sendNoteOn(61, 0, channel);
+    //  usbMIDI.sendNoteOn(61, 0, channel);
       
       
     } // ==== end setup() ===========
@@ -81,9 +83,18 @@
             //if (noteTime-prevNoteTime> noteLength){
           //      prevNoteTime = noteTime;
            //     noteTime = micros();
-        if (noteRatio){
-        usbMIDI.sendNoteOn(61, 99, channel);
-        delay(1000);
+        
+        if (noteRatio != doubZero){
+        //Serial.println(int(noteRatio*100*3.5));
+        usbMIDI.sendNoteOn(int(noteRatio*100*3.5), 99, channel);
+        dead = 0;
+        delay(3000);
+        //delay(1000);
+        }else{
+          if((noteTime-prevNoteTime> deadLength)&&!dead){
+            dead = 1;
+            usbMIDI.sendNoteOn(61,0,channel);
+          }
         }
            // }
        // }
@@ -108,8 +119,8 @@
         }else{usbMIDI.sendNoteOn(61, 0, channel +1);}  // 61 = C#4
          */
          // MIDI Controllers should discard incoming MIDI messages.
-        while (usbMIDI.read()) {
-        }
+      //  while (usbMIDI.read()) {
+      //  }
       
         
       }
