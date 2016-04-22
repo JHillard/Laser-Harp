@@ -7,7 +7,7 @@
     #define EXPECTED (ADCMAX*(VINPUT/VREF))     // expected ADC reading
     #define SAMPLES (10000)      // how many samples to combine for pp, std.dev statistics
 
-    const int analogInPin = 14;  // Analog input is AIN0 (Teensy3 pin 14, next to LED)
+    const int handPin = 14;  // Analog input is AIN0 (Teensy3 pin 14, next to LED)
     const int LED1 = 13;         // output LED connected on Arduino digital pin 13
     const int clockPin = 0;
     const int flagPin = 1; //digital output pin for Oscilloscope to see. 
@@ -16,10 +16,19 @@
     const int b3 = 4;
     const int b4 = 5;
 
-    int sensorValue = 0;        // value read from the ADC input
-    int handThreshold = 40000; //Threshhold for triggering the second pulse.
-    long oldT;
-    int hand = 0;  //Location of the hand
+    int lightThreshold = 40000; //Threshhold for triggering the second pulse.
+    int lowNotes = 0;
+    int highNotes = 0;
+    double buttonNote = 0;
+    double noteRatio = 0;
+    int analogVal = 0;
+    unsigned long curTime = 0;
+    unsigned long handTime = 0;
+    unsigned long lastTime = 0;
+    bool clockHigh = 0; //Prevent clock thinking a full cycle has passed.
+
+
+
     
     void setup() {    // ==============================================================
       pinMode(LED1,OUTPUT);       // enable digital output for turning on LED indicator
@@ -38,67 +47,47 @@
       digitalWrite(LED1,LOW);    delay(3000);   // wait for slow human to get serial capture running
      
       Serial.println("# Clock Search running... ");
+      
     } // ==== end setup() ===========
 
     void loop() {  // ================================================================ 
-      int lowNotes = 0;
-      int highNotes = 0;
-      double buttonNote = 0;
-      double handLocation = 0;
-      while(1){
-        //Serial.println(analogRead(analogInPin));
-        
+      
         if(digitalRead(clockPin)){
-          //Serial.println("ClockFound!");
-          hand = findHand();
-          //Serial.print("Hand found at ");
-          if ((lowNotes != 0) && (highNotes != 0) && (hand != 0)) handLocation = (hand);
-        }
-        if(!digitalRead(b1)&& (hand != 0)){
-          lowNotes = hand;
-          digitalWrite(LED1, HIGH);
-          delay(5);
-          digitalWrite(LED1,LOW);
-        }
-        if (!digitalRead(b2) && (hand != 0)){
-          highNotes = hand;
-          digitalWrite(LED1, HIGH);
-          delay(5);
-          digitalWrite(LED1,LOW);
-        }
+          if (!clockHigh){
+            lastTime = curTime;
+            curTime = micros();
+            clockHigh = 1; 
+          }
+        }else{clockHigh = 0;}
         
-        if ((lowNotes != 0) && (highNotes != 0) ){Serial.println(handLocation); }
-        
-      }
-     
-//     while (true) {}
-    } // end main()  =====================================================
-
-    int findHand(void){
-        int x;
-        int handTime =0;
-        int maximum;
-        int ave;
-        //int QuicknessThreshold = 7500;
-        
-        for (int i=0;i<SAMPLES;i++) {
-        x = analogRead(analogInPin);
-//      Serial.println(x,0);
-        if (x> maximum){maximum = x;}
-        //Serial.println(x);
-        if (x > handThreshold){ 
-          //if (i>QuicknessThreshold) handTime = micros();
-          handTime = micros();
+        analogVal = analogRead(handPin);
+        if (analogVal > lightThreshold){
           digitalWrite(flagPin, HIGH); //For the oscilloscope to track when we find the hand. 
           delay(1);
           digitalWrite(flagPin, LOW);
-          //if (i>QuicknessThreshold) hand = i;
-          }
+          handTime = micros();
         }
-        //Serial.print("Ave of hand Samples: ");
-        //Serial.println(ave);
-        //Serial.print("Max of hs: ");
-        //Serial.println(maximum);
+
+        if (handTime > curTime){
+          noteRatio = double(handTime-curTime)/double(curTime-lastTime);
+          Serial.println(noteRatio*100);
+          
+        }else{
+          noteRatio = 0;
+        }
+
         
-        return hand;
-    }
+        if(!digitalRead(b1)){
+          digitalWrite(LED1, HIGH);
+          delay(5);
+          digitalWrite(LED1,LOW);
+        }
+        if (!digitalRead(b2)){
+          digitalWrite(LED1, HIGH);
+          delay(5);
+          digitalWrite(LED1,LOW);
+        }
+        
+        
+      }
+
