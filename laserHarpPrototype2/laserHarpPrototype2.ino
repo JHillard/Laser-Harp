@@ -1,12 +1,7 @@
 //Laser Harp
 //Jake Hillard Spring 2016
 
-    #define VREF (3.266)         // ADC reference voltage (= power supply)
-    #define VINPUT (2.171)       // ADC input voltage from resistive divider to VREF
-    #define ADCMAX (65535)       // maximum possible reading from ADC
-    #define EXPECTED (ADCMAX*(VINPUT/VREF))     // expected ADC reading
-    #define SAMPLES (10000)      // how many samples to combine for pp, std.dev statistics
-
+  
     const int handPin = 14;  // Analog input is AIN0 (Teensy3 pin 14, next to LED)
     const int LED1 = 13;         // output LED connected on Arduino digital pin 13
     const int clockPin = 0;
@@ -15,10 +10,12 @@
     const int b2 = 3;
     const int b3 = 4;
     const int b4 = 5;
-
-    int lightThreshold = 40000; //Threshhold for triggering the second pulse.
+    const int channel = 1;
+                //40000
+    int lightThreshold = 20000; //Threshhold for triggering the second pulse.
     int lowNotes = 0;
     int highNotes = 0;
+    int lasersOn = 0;
     double buttonNote = 0;
     double noteRatio = 0;
     int analogVal = 0;
@@ -26,6 +23,9 @@
     unsigned long handTime = 0;
     unsigned long lastTime = 0;
     bool clockHigh = 0; //Prevent clock thinking a full cycle has passed.
+    unsigned long noteTime = 0;
+    unsigned long noteLength = 5*100;
+    unsigned long prevNoteTime = 0;
 
 
 
@@ -42,16 +42,18 @@
       analogReference(INTERNAL);  // set analog reference to internal ref
       analogReadRes(16);          // Teensy 3.0: set ADC resolution to this many bits
      
-      Serial.begin(115200);       // baud rate is ignored with Teensy USB ACM i/o
       digitalWrite(LED1,HIGH);   delay(1000);   // LED on for 1 second
       digitalWrite(LED1,LOW);    delay(3000);   // wait for slow human to get serial capture running
-     
-      Serial.println("# Clock Search running... ");
+
+      usbMIDI.sendNoteOn(61, 99, channel);
+      delay(2000);
+      usbMIDI.sendNoteOn(61, 0, channel);
+      
       
     } // ==== end setup() ===========
 
     void loop() {  // ================================================================ 
-      
+        
         if(digitalRead(clockPin)){
           if (!clockHigh){
             lastTime = curTime;
@@ -69,13 +71,22 @@
         }
 
         if (handTime > curTime){
-          noteRatio = double(handTime-curTime)/double(curTime-lastTime);
-          Serial.println(noteRatio*100);
-          
+          noteRatio = double(handTime-curTime)/double(curTime-lastTime);          
         }else{
           noteRatio = 0;
+         // usbMIDI.sendNoteOn(noteRatio*100*3, 0, channel);
         }
 
+        //if(lasersOn){
+            //if (noteTime-prevNoteTime> noteLength){
+          //      prevNoteTime = noteTime;
+           //     noteTime = micros();
+        if (noteRatio){
+        usbMIDI.sendNoteOn(61, 99, channel);
+        delay(1000);
+        }
+           // }
+       // }
         
         if(!digitalRead(b1)){
           digitalWrite(LED1, HIGH);
@@ -87,7 +98,19 @@
           delay(5);
           digitalWrite(LED1,LOW);
         }
-        
+        if(!digitalRead(b4)){
+        }
+        /*if(!digitalRead(b3)){
+          digitalWrite(LED1, HIGH);
+          delay(5);
+          digitalWrite(LED1, LOW);
+          usbMIDI.sendNoteOn(61, 99, channel +1 );  // 61 = C#4
+        }else{usbMIDI.sendNoteOn(61, 0, channel +1);}  // 61 = C#4
+         */
+         // MIDI Controllers should discard incoming MIDI messages.
+        while (usbMIDI.read()) {
+        }
+      
         
       }
 
